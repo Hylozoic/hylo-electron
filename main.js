@@ -1,4 +1,16 @@
-const { app, BrowserWindow, screen: electronScreen } = require('electron');
+const { app, BrowserWindow, screen: electronScreen, ipcMain, Notification } = require('electron');
+const path = require('path');
+
+function handleSetTitle (event, title) {
+  const webContents = event.sender
+  const win = BrowserWindow.fromWebContents(webContents)
+  win.setTitle(title)
+}
+
+function handleShowNotification (event, title, body) {
+  new Notification({ title, body }).show()
+}
+
 
 const createMainWindow = () => {
   let mainWindow = new BrowserWindow({
@@ -7,10 +19,12 @@ const createMainWindow = () => {
     show: false,
     backgroundColor: 'white',
     webPreferences: {
-      nodeIntegration: false
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true
     }
   });
-  const startURL = 'http://localhost:3000';
+  const startURL = app.isPackaged ? 'https://hylo.com' : 'http://localhost:3000';
 
   mainWindow.loadURL(startURL);
 
@@ -29,6 +43,10 @@ app.whenReady().then(() => {
       createMainWindow();
     }
   });
+
+  ipcMain.on('set-badge-count', (event, count) => app.setBadgeCount(count))
+  ipcMain.on('set-title', handleSetTitle)
+  ipcMain.on('show-notification', handleShowNotification)
 });
 
 app.on('window-all-closed', () => {
